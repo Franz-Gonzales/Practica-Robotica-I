@@ -41,7 +41,7 @@ Esta práctica esta basada en IoT (Internet de las Cosas) que integra múltiples
 - **Resistencia**: 220 ohmios en serie para limitar la corriente y proteger los LEDs.
 - **Espacio para Captura**:  
   ![Captura de Conexión de LEDs](images/leds_connection.jpg)  
-  *(Sube una imagen de la conexión de los LEDs aquí)*.
+  
 
 ### 2. Foco de 60 Watts
 - **Tipo**: Bombilla estándar de 60W, 220V AC.
@@ -50,7 +50,7 @@ Esta práctica esta basada en IoT (Internet de las Cosas) que integra múltiples
 - **Conexión**: No se conecta directamente al Arduino; se controla a través del módulo relay.
 - **Espacio para Captura**:  
   ![Captura de Conexión del Foco](images/image2.png)  
-  *(Sube una imagen de la conexión del foco y relay aquí)*.
+.
 
 ### 3. Módulo Relay 5V-220V (1 Canal)
 - **Tipo**: Módulo relay de un canal.
@@ -61,7 +61,6 @@ Esta práctica esta basada en IoT (Internet de las Cosas) que integra múltiples
     - IN → Pin digital 7 del Arduino.
 - **Espacio para Captura**:  
   ![Captura de Conexión del Relay](images/relay_connection.jpg)  
-  *(Sube una imagen de la conexión del relay aquí)*.
 
 ### 4. Sensor de Temperatura y Humedad DHT11
 - **Tipo**: Sensor digital DHT11.
@@ -75,7 +74,6 @@ Esta práctica esta basada en IoT (Internet de las Cosas) que integra múltiples
 - **Pin de Señal**: Conectado al pin digital 6 del Arduino.
 - **Espacio para Captura**:  
   ![Captura de Conexión del DHT11](images/dht11_connection.jpg)  
-  *(Sube una imagen de la conexión del sensor DHT11 aquí)*.
 
 ### 5. Motor Paso a Paso Nema 23
 - **Tipo**: Motor bipolar Nema 23 Oukeda OK57STH56-2804A-D6-35.
@@ -85,7 +83,7 @@ Esta práctica esta basada en IoT (Internet de las Cosas) que integra múltiples
 - **Fuente de Alimentación**: 12V mediante BK Precision BK1550.
 - **Espacio para Captura**:  
   ![Captura de Conexión del Motor Paso a Paso](images/image.png)  
-  *(Sube una imagen de la conexión del motor y L298N aquí)*.
+  *(imagen de la conexión del motor y L298N aquí)*.
 
 ### 6. Arduino UNO y Módulo Ethernet
 - **Función**: Microcontrolador principal y servidor web para la interfaz remota.
@@ -95,7 +93,6 @@ Esta práctica esta basada en IoT (Internet de las Cosas) que integra múltiples
     - IP Estática: Ejemplo, `192.168.1.200` (configurable según la red).
 - **Espacio para Captura**:  
   ![Captura de Conexión del Arduino y Ethernet](images/arduino_ethernet_connection.jpg)  
-  *(Sube una imagen del setup completo con Arduino y Ethernet aquí)*.
 
 ## Conexiones del Circuito
 
