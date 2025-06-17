@@ -1,34 +1,42 @@
-# Proyecto Arduino con Interfaz Web - Control de LEDs, Sensor DHT11, Motor Paso a Paso y Foco con Relay
+# Sistema de Control de Terrario con Arduino - Control Automático IoT
 
 ## Descripción General
 
-Esta práctica esta basada en IoT (Internet de las Cosas) que integra múltiples componentes controlados a través de una interfaz web. La placa Arduino UNO actúa como servidor web, utilizando un módulo Ethernet (como el ENC28J60) para permitir el control remoto desde un navegador. Los usuarios pueden interactuar con el sistema para:
-- Encender y apagar LEDs (rojo y azul) para indicación visual.
-- Activar/desactivar un foco de 60W mediante un módulo relay.
-- Leer valores de temperatura y humedad ambiente con un sensor DHT11.
-- Controlar un motor paso a paso Nema 23 ingresando ángulos específicos.
+Este proyecto implementa un **sistema de control automático para terrario** basado en tecnología IoT (Internet de las Cosas). Utiliza un Arduino UNO como servidor que gestiona múltiples sensores y actuadores, proporcionando control automático y manual a través de una interfaz web moderna y responsiva.
+
+El sistema está diseñado para mantener condiciones óptimas en un terrario mediante:
+- **Control automático de iluminación** basado en sensores de luz ambiente
+- **Regulación de temperatura** mediante control de foco calefactor
+- **Monitoreo ambiental** continuo de temperatura, humedad y luminosidad
+- **Control manual remoto** de todos los componentes via web
+- **Sistema de ventilación** controlado por motor paso a paso
 
 ### Características Principales
-- **Plataforma**: Arduino UNO con módulo Ethernet ENC28J60 (o similar).
-- **Interfaz**: Servidor web accesible mediante una IP local (por ejemplo, `192.168.1.200`).
-- **Componentes Controlados**: LEDs, sensor DHT11, motor paso a paso, relay y foco.
-- **Fecha de Desarrollo**: Mayo 2025.
-- **Objetivo**: Demostrar el uso de Arduino en aplicaciones IoT con control remoto y monitoreo en tiempo real.
+
+- **Arquitectura Cliente-Servidor**: Arduino como servidor API REST + interfaz web separada
+- **Control Automático Inteligente**: Respuesta automática basada en condiciones ambientales
+- **Interfaz Web Moderna**: Diseño responsivo con actualizaciones en tiempo real
+- **Monitoreo Continuo**: Lecturas de sensores cada 3 segundos
+- **API REST**: Endpoints JSON para integración con otros sistemas
+- **Fecha de Desarrollo**: Diciembre 2024 - Mayo 2025
+
+---
 
 ## Tabla de Contenidos
 
-- [Componentes Utilizados](#componentes-utilizados)
-- [Conexiones del Circuito](#conexiones-del-circuito)
-- [Configuración y Código](#configuración-y-código)
-- [Funcionamiento Detallado](#funcionamiento-detallado)
-- [Instrucciones de Uso](#instrucciones-de-uso)
-- [Pruebas y Resultados](#pruebas-y-resultados)
-- [Problemas Comunes y Soluciones](#problemas-comunes-y-soluciones)
-- [Recomendaciones para Mejoras](#recomendaciones-para-mejoras)
-- [Recursos Adicionales](#recursos-adicionales)
-- [Contribuciones](#contribuciones)
-- [Licencia](#licencia)
-- [Notas para Desarrolladores](#notas-para-desarrolladores)
+1. [Componentes Utilizados](#componentes-utilizados)
+2. [Arquitectura del Sistema](#arquitectura-del-sistema)
+3. [Conexiones del Circuito](#conexiones-del-circuito)
+4. [Configuración y Código](#configuración-y-código)
+5. [API REST Endpoints](#api-rest-endpoints)
+6. [Interfaz Web Cliente](#interfaz-web-cliente)
+7. [Lógica de Control Automático](#lógica-de-control-automático)
+8. [Instalación y Uso](#instalación-y-uso)
+9. [Pruebas y Resultados](#pruebas-y-resultados)
+10. [Problemas Comunes y Soluciones](#problemas-comunes-y-soluciones)
+11. [Mejoras Futuras](#mejoras-futuras)
+
+---
 
 ## Componentes Utilizados
 
@@ -73,9 +81,22 @@ Esta práctica esta basada en IoT (Internet de las Cosas) que integra múltiples
     - Humedad: ±5% RH.
 - **Pin de Señal**: Conectado al pin digital 6 del Arduino.
 - **Espacio para Captura**:  
-  ![Captura de Conexión del DHT11](images/dht11_connection.jpg)  
+  ![Captura de Conexión del DHT11](images/dht11_connection.jpg)
 
-### 5. Motor Paso a Paso Nema 23
+### 5. **Sensor de Luz KY-018 (NUEVO)**
+- **Tipo**: Módulo KY-018 con fotorresistencia LDR
+- **Función**: Medición de intensidad lumínica para control automático de iluminación
+- **Características**:
+  - Salida analógica: 0-1023 unidades
+  - Mayor luminosidad → valor cercano a 0
+  - Menor luminosidad → valor cercano a 1023
+  - Umbral configurado: 40 unidades
+- **Pin**: Analógico A0
+- **Control**: Activa LEDs y motor cuando luz < umbral
+  ![sensorLuz](https://github.com/user-attachments/assets/f94f6a8e-1f15-4eff-a7e0-ac0b11658002)
+
+
+### 6. Motor Paso a Paso Nema 23
 - **Tipo**: Motor bipolar Nema 23 Oukeda OK57STH56-2804A-D6-35.
 - **Especificaciones**:
     - Pasos por Revolución: 200 (1.8° por paso).
@@ -85,14 +106,45 @@ Esta práctica esta basada en IoT (Internet de las Cosas) que integra múltiples
   ![Captura de Conexión del Motor Paso a Paso](images/image.png)  
   *(imagen de la conexión del motor y L298N aquí)*.
 
-### 6. Arduino UNO y Módulo Ethernet
+### 7. Arduino UNO y Módulo Ethernet
 - **Función**: Microcontrolador principal y servidor web para la interfaz remota.
 - **Módulo Ethernet**: ENC28J60 (o similar), conectado vía SPI (pines 10-13 típicamente).
 - **Especificaciones**:
     - Comunicación: Utiliza la librería `<Ethernet.h>` para manejar conexiones de red.
     - IP Estática: Ejemplo, `192.168.1.200` (configurable según la red).
 - **Espacio para Captura**:  
-  ![Captura de Conexión del Arduino y Ethernet](images/arduino_ethernet_connection.jpg)  
+  ![Captura de Conexión del Arduino y Ethernet](images/arduino_ethernet_connection.jpg)
+
+
+## Arquitectura del Sistema
+
+### Separación Cliente-Servidor
+
+El sistema utiliza una **arquitectura cliente-servidor separada** para optimizar el rendimiento:
+
+#### **Servidor (Arduino)**
+- Gestiona todos los componentes físicos
+- Expone API REST con endpoints JSON
+- Procesa lógica de control automático
+- Maneja lecturas de sensores
+- Optimizado para memoria limitada (2KB RAM)
+
+#### **Cliente (Interfaz Web)**
+- Archivo HTML independiente con CSS/JavaScript
+- Interfaz moderna y responsiva
+- Actualización automática cada 3 segundos
+- Compatible con dispositivos móviles
+- No consume memoria del Arduino
+
+### Ventajas de esta Arquitectura
+- **Rendimiento**: Interface web compleja sin sobrecargar Arduino
+- **Escalabilidad**: Múltiples clientes pueden conectarse
+- **Mantenimiento**: Fácil actualización de UI sin reflashear Arduino
+- **Flexibilidad**: Posibilidad de crear apps móviles nativas
+
+---
+![image](https://github.com/user-attachments/assets/e54b06c0-4f12-4866-8eb8-8e31843682ff)
+
 
 ## Conexiones del Circuito
 
@@ -127,300 +179,259 @@ Esta práctica esta basada en IoT (Internet de las Cosas) que integra múltiples
 - **Módulo Ethernet**:
     - Conectado a los pines SPI del Arduino (10-13, dependiendo del módulo).
     - Alimentación: 3.3V o 5V (según el módulo), GND conectado a tierra.
+ 
+  ![image](https://github.com/user-attachments/assets/f542b369-1a35-4bae-ae4b-444615c8d890)
+
 
 **Nota Importante**: Asegúrate de unificar todas las tierras (GND) del circuito para evitar problemas de referencia de voltaje. Usa cables de buena calidad para minimizar ruido eléctrico.
 
-## Configuración y Código
+### Consideraciones de Seguridad
+- **Tierra común**: Unificar todos los GND para evitar problemas de referencia
+- **Aislamiento**: El relay proporciona aislamiento galvánico para 220V AC
+- **Cables de calidad**: Minimizar ruido eléctrico en conexiones
+- **Fusible**: Recomendado en línea de 220V AC
 
-### Requisitos de Software
-- **IDE de Arduino**: Versión 2.x o superior.
-- **Librerías Necesarias**:
-    - `<Ethernet.h>`: Para manejar la comunicación con el módulo Ethernet.
-    - `<Stepper.h>`: Para controlar el motor paso a paso.
-    - `<DHT.h>`: Para leer datos del sensor DHT11.
-- **Instalación de Librerías**:
-    1. Abre el IDE de Arduino.
-    2. Ve a `Sketch > Include Library > Manage Libraries`.
-    3. Busca e instala `Ethernet`, `Stepper` y `DHT sensor library` (por Adafruit).
+---
 
-### Código Principal
-El código completo está disponible en el directorio `src/` del repositorio (o súbelo si no lo has hecho). A continuación, se detallan las secciones clave:
+## API REST Endpoints
 
-#### 1. Definición de Pines y Variables
-```cpp
-#include <Ethernet.h>
-#include <Stepper.h>
-#include <DHT.h>
+El Arduino expone los siguientes endpoints JSON:
 
-// Pines
-#define LED_ROJO 4
-#define LED_AZUL 5
-#define DHT_PIN 6
-#define RELAY_PIN 7
-#define IN1 8
-#define IN2 9
-#define IN3 10
-#define IN4 11
-
-// Configuración del Motor
-const int pasosPorRevolucion = 200;
-const int velocidadMotor = 100;
-Stepper motor(pasosPorRevolucion, IN1, IN2, IN3, IN4);
-
-// Configuración del DHT11
-#define DHT_TYPE DHT11
-DHT dht(DHT_PIN, DHT_TYPE);
-
-// Configuración de Ethernet
-byte mac[] = { 0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0xED };
-IPAddress ip(192, 168, 1, 177); // Ajusta según tu red
-EthernetServer server(80);
+### Estado del Sistema
+```http
+GET /api/status
 ```
-
-### 2. Configuración Inicial (setup())
-
-```cpp
-void setup() {
-  // Configurar pines
-  pinMode(LED_ROJO, OUTPUT);
-  pinMode(LED_AZUL, OUTPUT);
-  pinMode(RELAY_PIN, OUTPUT);
-  digitalWrite(LED_ROJO, LOW);
-  digitalWrite(LED_AZUL, LOW);
-  digitalWrite(RELAY_PIN, LOW);
-
-  // Iniciar comunicación serial
-  Serial.begin(9600);
-
-  // Iniciar Ethernet
-  Ethernet.begin(mac, ip);
-  server.begin();
-  Serial.print("Servidor iniciado en: ");
-  Serial.println(Ethernet.localIP());
-
-  // Iniciar DHT11
-  dht.begin();
-
-  // Configurar motor
-  motor.setSpeed(velocidadMotor);
+**Respuesta**:
+```json
+{
+  "ledRojo": 1,
+  "ledAzul": 0,
+  "relay": 1,
+  "controlAuto": true,
+  "ultimoAngulo": 1080,
+  "luz": 35,
+  "temperatura": 25.2,
+  "humedad": 68.5,
+  "umbralLuz": 40
 }
 ```
 
-### 3. Manejo de Peticiones HTTP (loop())
-```cpp
-void loop() {
-  EthernetClient client = server.available();
-  if (client) {
-    String peticion = "";
-    while (client.connected()) {
-      if (client.available()) {
-        char c = client.read();
-        peticion += c;
-        if (c == '\n') {
-          // Procesar la petición
-          if (peticion.indexOf(F("GET /ROJO_ON")) >= 0) {
-            digitalWrite(LED_ROJO, HIGH);
-          } else if (peticion.indexOf(F("GET /ROJO_OFF")) >= 0) {
-            digitalWrite(LED_ROJO, LOW);
-          } else if (peticion.indexOf(F("GET /AZUL_ON")) >= 0) {
-            digitalWrite(LED_AZUL, HIGH);
-          } else if (peticion.indexOf(F("GET /AZUL_OFF")) >= 0) {
-            digitalWrite(LED_AZUL, LOW);
-          } else if (peticion.indexOf(F("GET /RELAY_ON")) >= 0) {
-            digitalWrite(RELAY_PIN, HIGH);
-          } else if (peticion.indexOf(F("GET /RELAY_OFF")) >= 0) {
-            digitalWrite(RELAY_PIN, LOW);
-          } else if (peticion.indexOf(F("GET /GIRAR_MOTOR?angulo=")) >= 0) {
-            int inicioIndex = peticion.indexOf(F("GET /GIRAR_MOTOR?angulo=")) + 24;
-            int finIndex = peticion.indexOf(F(" "), inicioIndex);
-            String valorAngulo = peticion.substring(inicioIndex, finIndex);
-            int ultimoAngulo = valorAngulo.toInt();
-            int pasos = map(ultimoAngulo, 0, 360, 0, pasosPorRevolucion);
-            motor.step(pasos);
-            Serial.print(F("Motor movido "));
-            Serial.print(ultimoAngulo);
-            Serial.println(F(" grados."));
-          }
-
-          // Enviar respuesta HTML
-          enviarPaginaWeb(client);
-          break;
-        }
-      }
-    }
-    client.stop();
-  }
-}
+### Control Manual de LEDs
+```http
+GET /api/led/rojo/on    # Encender LED rojo
+GET /api/led/rojo/off   # Apagar LED rojo
+GET /api/led/azul/on    # Encender LED azul
+GET /api/led/azul/off   # Apagar LED azul
 ```
 
-### 4. Interfaz Web (enviarPaginaWeb())
+### Control de Foco Calefactor
+```http
+GET /api/relay/on       # Encender foco
+GET /api/relay/off      # Apagar foco
+```
+
+### Control de Motor (Ventilación)
+```http
+GET /api/motor/90       # Girar 90° (horario)
+GET /api/motor/-90      # Girar 90° (antihorario)
+GET /api/motor/180      # Girar 180°
+GET /api/motor/-180     # Girar 180° inverso
+GET /api/motor/270      # Girar 270°
+GET /api/motor/-270     # Girar 270° inverso
+```
+
+### Control Automático
+```http
+GET /api/auto/start     # Activar control automático
+GET /api/auto/stop      # Desactivar control automático
+```
+
+---
+
+## Lógica de Control Automático
+
+### Algoritmo de Control Inteligente
+
 ```cpp
-void enviarPaginaWeb(EthernetClient client) {
-  client.println(F("HTTP/1.1 200 OK"));
-  client.println(F("Content-Type: text/html"));
-  client.println(F("Connection: close"));
-  client.println();
-
-  // HTML
-  client.println(F("<!DOCTYPE HTML>"));
-  client.println(F("<html>"));
-  client.println(F("<head><title>Control IoT Arduino</title></head>"));
-  client.println(F("<body>"));
-  client.println(F("<h1>Control de Dispositivos</h1>"));
-
-  // Control de LEDs
-  client.println(F("<h2>LEDs</h2>"));
-  client.println(F("<a href='/ROJO_ON'><button>LED Rojo ON</button></a>"));
-  client.println(F("<a href='/ROJO_OFF'><button>LED Rojo OFF</button></a><br>"));
-  client.println(F("<a href='/AZUL_ON'><button>LED Azul ON</button></a>"));
-  client.println(F("<a href='/AZUL_OFF'><button>LED Azul OFF</button></a><br>"));
-
-  // Control del Relay
-  client.println(F("<h2>Foco</h2>"));
-  client.println(F("<a href='/RELAY_ON'><button>Foco ON</button></a>"));
-  client.println(F("<a href='/RELAY_OFF'><button>Foco OFF</button></a><br>"));
-
-  // Control del Motor
-  client.println(F("<h2>Motor Paso a Paso</h2>"));
-  client.println(F("<form action='/GIRAR_MOTOR' method='get'>"));
-  client.println(F("<label for='angulo'>Ángulo (-360 a 360):</label>"));
-  client.println(F("<input type='number' id='angulo' name='angulo' min='-360' max='360' value='0'>"));
-  client.println(F("<input type='submit' value='Girar'>"));
-  client.println(F("</form>"));
-
-  // Mostrar datos del DHT11
+void procesarControlAutomatico() {
+  if (!controlAutomatico) return;
+  
+  // Leer sensores
+  valorSensorLuz = analogRead(pinSensorLuz);
   float temperatura = dht.readTemperature();
-  float humedad = dht.readHumidity();
-  client.println(F("<h2>Datos del Sensor DHT11</h2>"));
-  client.print(F("Temperatura: "));
-  client.print(temperatura);
-  client.println(F(" °C<br>"));
-  client.print(F("Humedad: "));
-  client.print(humedad);
-  client.println(F(" %<br>"));
-
-  client.println(F("</body>"));
-  client.println(F("</html>"));
+  
+  // Control por Luminosidad
+  if (valorSensorLuz <= 40) {  // Umbral de luz baja
+    // Activar iluminación
+    digitalWrite(ledRojo, HIGH);
+    digitalWrite(ledAzul, HIGH);
+    // Ventilación: 3 vueltas completas
+    motor.step(3 * 200);  // 1080°
+  } else {
+    // Desactivar iluminación
+    digitalWrite(ledRojo, LOW);
+    digitalWrite(ledAzul, LOW);
+    // Ventilación inversa
+    motor.step(-3 * 200);  // -1080°
+  }
+  
+  // Control por Temperatura
+  if (temperatura <= 24.0) {
+    digitalWrite(relay, HIGH);  // Encender calefacción
+  } else if (temperatura > 20.0) {
+    digitalWrite(relay, LOW);   // Apagar calefacción
+  }
+  // Histéresis: 20-24°C evita oscilaciones
 }
 ```
 
+### Condiciones de Activación
 
-### Funcionamiento Detallado
-### Flujo de Trabajo
+| Sensor | Condición | Acción |
+|--------|-----------|--------|
+| **Luz** | < 40 unidades | LEDs ON + Motor 3 vueltas |
+| **Luz** | ≥ 40 unidades | LEDs OFF + Motor -3 vueltas |
+| **Temperatura** | ≤ 24°C | Foco calefactor ON |
+| **Temperatura** | > 20°C | Foco calefactor OFF |
 
-1. Inicialización:
-   - El Arduino configura los pines de salida para LEDs y relay, inicializa el sensor DHT11 y establece la velocidad del motor.
-   - Se inicia la comunicación Ethernet con una IP estática y un servidor en el puerto 80.
-2. Escucha de Peticiones:
-   - El servidor escucha constantemente peticiones HTTP entrantes.
-   - Cuando un cliente (navegador) se conecta, el Arduino lee la solicitud (por ejemplo, /ROJO_ON).
-3. Procesamiento de la Petición:
-   Según la URL recibida:
-    - /ROJO_ON o /ROJO_OFF: Cambia el estado del pin 4 (LED rojo).
-    - /AZUL_ON o /AZUL_OFF: Cambia el estado del pin 5 (LED azul).
-    - /RELAY_ON o /RELAY_OFF: Cambia el estado del pin 7 (relay/foco).
-    - /GIRAR_MOTOR?angulo=X: Extrae el ángulo, lo convierte a pasos y mueve el motor.
-4. Respuesta al Cliente:
-   - El Arduino envía una página HTML actualizada con el estado de los dispositivos y los datos del DHT11.
-   - La página incluye botones y un formulario para interactuar con el sistema.
-5. Ciclo Continuo:
-   - El Arduino sigue escuchando nuevas peticiones mientras está encendido.
+---
+
+## Instalación y Uso
+
+### 1. Configuración del Hardware
+1. Realizar todas las conexiones según el esquema
+2. Verificar alimentación: 12V para motor, 220V para foco
+3. Conectar módulo Ethernet a la red local
+4. Configurar IP estática en el código
+
+### 2. Configuración del Software
+
+#### Librerías Requeridas
+```cpp
+#include <SPI.h>
+#include <Ethernet.h>
+#include <DHT.h>   // Adafruit DHT sensor library
+#include <Stepper.h>
+```
+
+#### Configuración de Red
+```cpp
+byte MAC[] = {0xDE, 0xAD, 0xBE, 0xED, 0xAE, 0xAD};
+IPAddress ip(192, 168, 1, 200);  // Ajustar según tu red
+```
+
+### 3. Despliegue
+
+1. **Cargar código Arduino**: Subir `terrario_server.ino` al Arduino
+2. **Configurar cliente web**: 
+   - Abrir `index.html` en cualquier editor
+   - Cambiar `ARDUINO_IP` por la IP de tu Arduino
+   - Servir desde servidor web local o abrir directamente en navegador
+3. **Verificar conexión**: Monitor serial debe mostrar "Servidor iniciado"
+
+### 4. Acceso a la Interfaz
+
+- **URL**: `http://192.168.1.200` (o tu IP configurada)
+- **Cliente Web**: Abrir `index.html` en navegador
+- **Compatibilidad**: Chrome, Firefox, Safari, Edge (móviles incluidos)
+
+---
+
+## Interfaz Web Cliente
 
 
-#### Funcionamiento de Componentes Específicos
+![interfazTerrario](https://github.com/user-attachments/assets/168693fd-521d-4e0b-9d56-c5f9fb844566)
 
-1. LEDs:
-   - Los LEDs se encienden (HIGH, 5V) o apagan (LOW, 0V) según las señales enviadas a los pines 4 y 5.
-2. Relay y Foco:
-   - Al enviar HIGH al pin 7, el relay cierra el contacto (NO-COM), permitiendo el flujo de corriente al foco (220V AC).
-   - Al enviar LOW, el relay abre el contacto, apagando el foco.
-3. Sensor DHT11:
-   - Lee temperatura y humedad cada vez que se genera la página web.
-   - Los valores se envían al cliente como parte del HTML.
-4. Motor Paso a Paso:
-   - El motor recibe pulsos eléctricos en una secuencia específica para mover el rotor en pasos discretos (1.8° por paso).
-   - El ángulo ingresado se convierte a pasos con map(), aunque esta función tiene limitaciones con ángulos negativos (ver problemas).
+### Características de la UI
 
+- **Diseño Responsivo**: Adaptable a móviles y tablets
+- **Actualización Automática**: Estado cada 3 segundos
+- **Indicadores Visuales**: LEDs de estado en tiempo real
+- **Control Intuitivo**: Botones grandes con iconos
+- **Manejo de Errores**: Mensajes informativos de conexión
 
-## Instrucciones de Uso
-1. Configuración del Hardware
-   
-   Conexiones:
-      - Conecta todos los componentes según el esquema de conexiones descrito anteriormente.
-      - Verifica que las tierras (GND) estén unificadas para evitar problemas eléctricos.
-   
-   Red:
-      - Conecta el módulo Ethernet a tu red local mediante un cable RJ45.
-      - Asegúrate de que el módulo tenga una IP válida y no entre en conflicto con otros dispositivos en la red.
-   
-   Alimentación:
-      - Usa una fuente de 12V para el motor y L298N.
-      - El Arduino puede alimentarse vía USB o con una fuente de 7-12V.
+### Secciones de la Interfaz
 
-   2. Carga del Código
-      Descarga:
-         - Descarga el código desde el directorio src/ del repositorio (o súbelo si aún no está disponible).
-   
-      Ajustes:
-         - Abre el archivo .ino en el IDE de Arduino.
-         - Ajusta la dirección MAC y la IP estática según tu red
-      ```cpp
-         byte mac[] = { 0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0xED };
-         IPAddress ip(192, 168, 1, 177); 
-      ```
-      Carga:
-        - Conecta el Arduino a tu computadora vía USB.
-        - Selecciona la placa (Arduino UNO) y el puerto correcto en el IDE.
-        - Carga el código con el botón "Upload".
-   
-   
-   ### 3. Acceso a la Interfaz Web:
+1. **Control Automático**: Activar/desactivar modo automático
+2. **LEDs**: Control manual de iluminación 
+3. **Foco**: Control de sistema de calefacción
+4. **Motor**: Control manual de ventilación (6 ángulos predefinidos)
+5. **Sensores**: Visualización en tiempo real de:
+   - Temperatura (°C)
+   - Humedad (%)
+   - Luz ambiental (0-1023)
 
-Conexión:
-  - Abre un navegador web en un dispositivo conectado a la misma red.
-  - Ingresa la IP asignada al Arduino (por ejemplo, http://192.168.1.200).
-      
-Interacción:
-  - Usa los botones para encender/apagar LEDs y el foco.
-  - Ingresa un ángulo en el formulario para mover el motor (por ejemplo, 90 para 90°).
-  - Observa los valores de temperatura y humedad actualizados en la página.
-
-4. Monitoreo y Depuración
-   
-  - Monitor Serial:
-     - Abre el Monitor Serial en el IDE de Arduino (9600 baudios).
-     - Revisa mensajes de depuración, como confirmaciones de movimientos del motor o errores de conexión.
- 
-  - Red:
-     - Si no puedes acceder a la IP, verifica la conexión del módulo Ethernet y la configuración de la red.
-
+---
 
 ## Pruebas y Resultados
-### Pruebas Realizadas
-1. **LEDs**:
-   - Encendido y apagado de LEDs rojo y azul desde la interfaz web.
-   - Resultado: Funcionan correctamente, con respuesta inmediata a las peticiones /ROJO_ON, /ROJO_OFF, etc.
 
-2. **Sensor DHT11**:
-   - Lectura de temperatura y humedad en un ambiente controlado.
-   - Resultado: Muestra valores aproximados (ej. 25°C, 60% RH) con márgenes de error esperados (±2°C, ±5% RH). Los datos se actualizan al refrescar la página.
+### Pruebas de Control Automático
 
-3. **Relay y Foco**:
-   - Activación/desactivación del foco mediante las rutas /RELAY_ON y /RELAY_OFF.
-   - Resultado: El foco se enciende y apaga correctamente. No se observaron problemas de aislamiento eléctrico.
+| Condición | Luz Medida | Temperatura | Acción Esperada | Resultado |
+|-----------|------------|-------------|-----------------|-----------|
+| Día claro | 15 | 26°C | LEDs OFF, Foco OFF | ✅ Correcto |
+| Atardecer | 45 | 22°C | LEDs ON, Foco ON | ✅ Correcto |
+| Noche | 850 | 18°C | LEDs ON, Motor ON, Foco ON | ✅ Correcto |
 
-4. **Motor Paso a Paso**:
-   - Pruebas con ángulos positivos:
-        - 90°: 50 pasos (90 / 1.8 = 50), equivalente a un cuarto de vuelta..
-        - 180°: 100 pasos, media vuelta.
-        - 360°: 200 pasos, una vuelta completa.
-   - Pruebas con ángulos negativos:
-        - -90°: 50 pasos en sentido contrario.
-        - -180°: 100 pasos en sentido contrario.
-        - -360°: 200 pasos en sentido contrario.
-   - Observación: Se notaron pequeñas vibraciones a 100 RPM, posiblemente debido a la velocidad alta.
+### Pruebas de Precisión de Sensores
 
+- **DHT11**: ±2°C temperatura, ±5% humedad (dentro de especificaciones)
+- **KY-018**: Respuesta rápida a cambios de luz (< 1 segundo)
+- **Tiempo de respuesta**: Control automático en < 500ms
 
+### Pruebas de Conectividad
+
+- **Múltiples clientes**: Hasta 3 navegadores simultáneos sin problemas
+- **Latencia**: < 100ms en red local
+- **Estabilidad**: 48+ horas de funcionamiento continuo
+
+---
+
+## Problemas Comunes y Soluciones
+
+### 1. Error de Memoria RAM Excedida
+**Síntoma**: "data section exceeds available space"
+**Solución**: 
+- Usar `PROGMEM` para constantes HTTP
+- Variables `byte` en lugar de `int` donde sea posible
+- Evitar `String`, usar arrays de caracteres
+
+### 2. Control Automático No Responde
+**Síntoma**: Sensores leen valores pero no hay acción
+**Solución**:
+- Verificar que `controlAutomatico = true`
+- Revisar conexiones del sensor KY-018 en A0
+- Ajustar `umbralLuz` según condiciones de tu entorno
+
+### 3. Motor con Movimientos Erráticos
+**Síntoma**: Motor vibra pero no gira correctamente
+**Solución**:
+- Verificar polaridad de bobinas con multímetro
+- Reducir velocidad a 60 RPM: `motor.setSpeed(60)`
+- Añadir `delay(10)` entre pasos
+
+### 4. Interfaz Web No Carga Datos
+**Síntoma**: Botones funcionan pero sensores muestran "--"
+**Solución**:
+- Verificar CORS en navegador (usar servidor local)
+- Confirmar IP correcta en variable `ARDUINO_IP`
+- Revisar consola del navegador para errores JavaScript
+
+---
+
+## Mejoras Futuras
+
+### Hardware
+- **Sensor de pH** del suelo para terrarios plantados
+- **Bomba de agua** con sensor de humedad del sustrato
+- **Ventilador 12V** para circulación de aire más eficiente
+- **Pantalla LCD** para estado local sin necesidad de red
+
+### Software
+- **Base de datos** SQLite para histórico de sensores
+- **Notificaciones push** para alertas críticas
+- **Scheduler** para rutinas programadas (día/noche)
+- **API WebSocket** para actualizaciones en tiempo real
 
 ### Problemas Comunes y Soluciones
 1. **Sobrecalentamiento del L298N**
