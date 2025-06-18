@@ -190,6 +190,10 @@
             border: 1px solid #f5c6cb;
         }
 
+        .hidden {
+            display: none;
+        }
+
         .refresh-btn {
             position: fixed;
             bottom: 20px;
@@ -315,7 +319,7 @@
             </div>
         </div>
 
-        <div id="errorMessage" class="error" style="display: none;"></div>
+        <div id="errorMessage" class="error hidden"></div>
     </div>
 
     <button class="refresh-btn" onclick="updateStatus()" title="Actualizar estado">
